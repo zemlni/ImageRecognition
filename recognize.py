@@ -46,7 +46,7 @@ def getColor(pixel):
 	return "ERROR"
 
 def generatePolynomial(imageArray):
-	radius = 0 
+	radius = 5 
 	lastPoint = (0, 0)
 	background = getColor(imageArray[0][0])
 	for row in range(0, len(imageArray)):
@@ -55,7 +55,8 @@ def generatePolynomial(imageArray):
 			#print(pixel)
 			if getColor(pixel) != background:
 				#print(getColor(pixel))
-				if (((row - lastPoint[0]) ** 2 + (col - lastPoint[1]) ** 2) ** (1/2)) > radius:
+				#print("row: " + str(row) + "col: " + str(col) + "distance: " + str((((row - lastPoint[0]) ** 2 + (col - lastPoint[1]) ** 2) ** (.5)))+ "last row: " + str(lastPoint[0]) + "last col: " + str(lastPoint[1]))
+				if (((row - lastPoint[0]) ** 2 + (col - lastPoint[1]) ** 2) ** (.5)) > radius:
 					#print("test")
 					xValues.append(row)
 					yValues.append(col)
