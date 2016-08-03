@@ -22,9 +22,9 @@ def getLaserPoints(imageArray):
                 pixel = answer[row][col]
                 testAverage = getAverage(pixel)
                 if testAverage > balance:
-                    dark.append((row, col))
-                else:
                     light.append((row, col))
+                else:
+                    dark.append((row, col))
     #assumption that laser points take up less space in the picture than non laser.
     if len(light) > len(dark):
         return dark
