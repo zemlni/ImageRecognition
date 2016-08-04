@@ -69,4 +69,5 @@ while True:
     if frame != None:
         imageArray = np.array(frame)
         laserArray += getLaserPoints(imageArray)
-print laserArray 
+print laserArray
+#comment 
