@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
+
 
 #########################################
 
@@ -17,14 +19,16 @@ def getLaserPoints(imageArray):
     balance = np.mean(imageArray)
     light = []
     dark = []
-    for row in len(answer):
-            for col in len(imageArray[row]):
-                pixel = answer[row][col]
+    for row in range(0, len(imageArray)):
+            for col in range(0, len(imageArray[row])):
+                pixel = imageArray[row][col]
                 testAverage = getAverage(pixel)
                 if testAverage > balance:
                     light.append((row, col))
+		    print str(row) + ", " + str(col) + "light" 
                 else:
                     dark.append((row, col))
+		    print "dark"
     #assumption that laser points take up less space in the picture than non laser.
     if len(light) > len(dark):
         return dark
@@ -38,9 +42,11 @@ def getAverage(pixel):
 
 #########################################
 laserArray = []
-cap = cv2.VideoCapture("video1.mp4")
+cap = cv2.VideoCapture("video2.mp4")
+cap.set(3, 240);
+cap.set(4, 135);
 while not cap.isOpened():
-    cap = cv2.VideoCapture("video1.mp4")
+    cap = cv2.VideoCapture("video2.mp4")
     cv2.waitKey(1000)
     print "Wait for the header"
 
@@ -48,11 +54,11 @@ pos_frame = cap.get(cv2.cv.CV_CAP_PROP_POS_FRAMES)
 
 while True:
     flag, frame = cap.read()
-    if flag:
-        # The frame is ready and already captured
-        cv2.imshow('video', frame)
+    if flag: 
+      #  # The frame is ready and already captured
+      #  cv2.imshow('video', frame)
         pos_frame = cap.get(cv2.cv.CV_CAP_PROP_POS_FRAMES)
-        print str(pos_frame)+" frames"
+      #  print str(pos_frame)+" frames"
     else:
         # The next frame is not ready, so we try to read it again
         cap.set(cv2.cv.CV_CAP_PROP_POS_FRAMES, pos_frame-1)
@@ -68,6 +74,12 @@ while True:
         break
     if frame != None:
         imageArray = np.array(frame)
-        laserArray += getLaserPoints(imageArray)
+        test =  getLaserPoints(imageArray)
+	print "frame number" + str(pos_frame)
+        xs = [x[0] for x in test]
+        ys = [x[1] for x in test]
+        plt.plot(xs, ys, 'o')
+        plt.show()
 print laserArray
-#comment 
+plt.plot(xs, ys, 'o')
+plt.show()
