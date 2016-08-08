@@ -1,8 +1,12 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 
-
+#########################################
+#constants
+SPEED = .1 #m/s random speed for now
+WIDTH_OF_CAR = .2 #m random width (back wheel to back wheel)
 #########################################
 
 #change this so that it doesn't have to pass through the whole array three times.
@@ -69,6 +73,40 @@ def getLocation(frame):
 
     return center
 
+def pointsToDirections(laserArray, start):
+    directions = [] #tuples of format (t1, t2) where t1 = time for engine 1(left) to run, t2 = time for engine 2i(right) to run.
+
+    #first maneuver: navigate to first point of path
+    startVector = (start[0], start[1] + 1)#facing forward
+    point = laserArray[0]
+    pointVector = (point[0] - start[0], point[1] - start[1])
+    startAngleTime = angleTime(startVector, pointVector) # - need to figure out whether to turn left or right (which engine to use)
+    
+    startLength = math.hypot(pointVector[0], pointVector[1])
+    startDistanceTime = startLength / SPEED
+    directions.append((startDistanceTime, startDistanceTime)) #investigate whether two motors at once gives different speed - must relate to rpm/SPEED issue
+    
+    for i in range(1, len(laserArray) - 1):
+        prevPoint = laserArray[i - 1]
+        curPoint = laserArray[i]
+        nextPoint = laserArray[1 + 1]
+        vector1 = (curPoint[0] - prevPoint[0], curPoint[1] - prevPoint[1])
+        vector2 = (nextPoint[0] - curPoint[0], nextPoint[1] - curPoint[1])
+        curAngleTime = angleTime(vector1, vector2) #need to figure out whether to turn left or right (which engine to use)
+
+        curDistanceTime = math.hypot(vector2[0], vector2[1]) / SPEED
+        directions.append((curDistanceTime, curDistanceTime)) #investigate whether two motors at once gives different speed - must relate to rpm/SPEED issue
+
+    return directions        
+
+#need to figure out whether to turn left or right (which engine to use)
+def angleTime(v1, v2): 
+    dot = v1[0] * v2[0] + v1[1] * v2[1]
+    bottom = math.hypot(v1[0], v1[1]) * math.hypot(v2[0], v2[1])
+    angle = math.acos(dot / bottom)
+    return WIDTH_OF_CAR * angle / SPEED
+
+ 
 def getAverage(pixel):
     average = 0
     for num in pixel:
@@ -82,22 +120,27 @@ while not cap.isOpened():
     cap = cv2.VideoCapture("video2.mp4")
     cv2.waitKey(1000)
     print "Wait for the header"
-
-
+width = cap.get(CV_CAP_PROP_FRAME_WIDTH)
+height = cap.get(CV_CAP_PROP_FRAME_HEIGHT)
+aspectRatio = width/height
 
 while True:
     flag, frame = cap.read()
     if flag:
         pos_frame = cap.get(cv2.cv.CV_CAP_PROP_POS_FRAMES)
-        ratio = 300.0 / frame.shape[1]
-        height = (300, int(frame.shape[0] * ratio))
-        frame = cv2.resize(frame, height,  interpolation = cv2.INTER_AREA);
+        GOAL_WIDTH = 300 #change if you want different width, height will change accordingly.
+        GOAL_HEIGHT = GOAL_WIDTH / aspectRatio
+        size = (GOAL_WIDTH, int(GOAL_HEIGHT)) #might be the other way around, need to check
+        frame = cv2.resize(frame, size, interpolation = cv2.INTER_AREA);
         location =  getLocation(frame)
 	#print "frame number" + str(pos_frame) 
         #xs = [x[0] for x in test]
         #ys = [x[1] for x in test]
         #plt.plot(xs, ys, 'o')
         #plt.show()
+        #need to magnify locations by aspect ratio to reflect original video, this should do it, need to check.
+        location[0] = location[0] * int(width / GOAL_WIDTH)
+        location[1] = location[1] * int(height / GOAL_HEIGHT)
         laserArray.append(location)        
         
     else:
@@ -113,8 +156,13 @@ while True:
         # If the number of captured frames is equal to the total number of frames,
         # we stop
         break
+
 xs = [x[0] for x in laserArray]
 ys = [x[1] for x in laserArray]
 plt.plot(xs, ys, '-')
 plt.show()
 print laserArray
+
+start = (int(width/2), 0) #starting position of the robot, might need to change.
+directions = pointsToDirections(laserArray, start)
+
