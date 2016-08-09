@@ -74,7 +74,7 @@ def getLocation(frame):
     return center
 
 def pointsToDirections(laserArray, start):
-    directions = [] #tuples of format (t1, t2) where t1 = time for engine 1(left) to run, t2 = time for engine 2i(right) to run.
+    directions = [] #tuples of format (t1, t2) where t1 = time for engine 1(left) to run, t2 = time for engine 2(right) to run.
 
     #first maneuver: navigate to first point of path
     startVector = (start[0], start[1] + 1)#facing forward
@@ -87,25 +87,25 @@ def pointsToDirections(laserArray, start):
     
     startDistanceTime = math.hypot(pointVector[0], pointVector[1]) / SPEED
     directions.append((startDistanceTime, startDistanceTime)) #investigate whether two motors at once gives different speed - must relate to rpm/SPEED issue
-    
-    for i in range(1, len(laserArray) - 1):
+    prevPoint = start 
+    location = point
+    nextPoint = laserArray[1]
+    for i in range(0, len(laserArray) - 1):
         prevPoint = laserArray[i - 1]
         curPoint = laserArray[i]
         nextPoint = laserArray[i + 1]
-	if curPoint == nextPoint or prevPoint == curPoint: continue
-        #print "prevPoint: " + str(prevPoint)
-        #print "curPoint: " + str(curPoint)
-        #print "nextPoint: " + str(nextPoint)
-        vector1 = (curPoint[0] - prevPoint[0], curPoint[1] - prevPoint[1])
-        vector2 = (nextPoint[0] - curPoint[0], nextPoint[1] - curPoint[1])
-        #print "vector1: " + str(vector1)
-        #print "vector2: " + str(vector2)
-        directions.append(angleTime(vector1, vector2)) #tells angle to turn (if any)
+	if not (location == nextPoint or location == prevPoint): 
+            vector1 = (curPoint[0] - prevPoint[0], curPoint[1] - prevPoint[1])
+            vector2 = (nextPoint[0] - curPoint[0], nextPoint[1] - curPoint[1])
+            curAngleTime = angleTime(vector1, vector2)
+            if curAngleTime != (0, 0):
+                directions.append(curAngleTime) #tells angle to turn (if any)
+                print "turn"
 
-        curDistanceTime = math.hypot(vector2[0], vector2[1]) / SPEED
-        directions.append((curDistanceTime, curDistanceTime)) #investigate whether two motors at once gives different speed - must relate to rpm/SPEED issue
-        #print directions
-
+            curDistanceTime = math.hypot(vector2[0], vector2[1]) / SPEED
+            directions.append((curDistanceTime, curDistanceTime)) #investigate whether two motors at once gives different speed - must relate to rpm/SPEED issue
+            #print directions
+            location = nextPoint #changed location
     return directions        
 
 #transform angles into times for specific engine to run
@@ -131,17 +131,16 @@ def getAverage(pixel):
 #generate points for some shapes
 n = 500 # number of points
 r = 10
-circle = [(math.cos(2 * math.pi / n * x) * r, math.sin(2 * math.pi / n * x) * r) for x in xrange(0, n + 1)]
+circle = [(math.cos(2 * math.pi / n * x) * r, math.sin(2 * math.pi / n * x) * r) for x in range(0, n + 1)]
 rectangle = []
-n = 400
-for h1 in range(0, 100): rectangle.append((0, h1))
-for l1 in range(0, 200): rectangle.append((l1, 99))
-for h2 in range(99, -1, -1): rectangle.append((199, h2))
-for l2 in range(199, -1, -1): rectangle.append((l2, 0))
+for h1 in range(0, 10): rectangle.append((0, h1))
+for l1 in range(0, 20): rectangle.append((l1, 9))
+for h2 in range(9, -1, -1): rectangle.append((19, h2))
+for l2 in range(19, -1, -1): rectangle.append((l2, 0))
 start = (0, 0)
-#print rectangle
+print rectangle
 print pointsToDirections(rectangle, start)
-print pointsToDirections(circle, start)
+#print pointsToDirections(circle, start)
 '''
 #########################################
 laserArray = []
