@@ -1,12 +1,12 @@
-import cv2
+#import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import math
 
 #########################################
 #constants
-SPEED = .1 #m/s random speed for now
-WIDTH_OF_CAR = .2 #m random width (back wheel to back wheel)
+SPEED = 10 #pixel/s random speed for now
+WIDTH_OF_CAR = 20 #pixels random width (back wheel to back wheel)
 #########################################
 
 #change this so that it doesn't have to pass through the whole array three times.
@@ -78,41 +78,71 @@ def pointsToDirections(laserArray, start):
 
     #first maneuver: navigate to first point of path
     startVector = (start[0], start[1] + 1)#facing forward
+    #print startVector
     point = laserArray[0]
-    pointVector = (point[0] - start[0], point[1] - start[1])
-    startAngleTime = angleTime(startVector, pointVector) # - need to figure out whether to turn left or right (which engine to use)
+    #print point
+    pointVector = (point[0] - startVector[0], point[1] - startVector[1])
+    #print pointVector
+    directions.append(angleTime(startVector, pointVector)) #tells initial angle to turn (if any) 
     
-    startLength = math.hypot(pointVector[0], pointVector[1])
-    startDistanceTime = startLength / SPEED
+    startDistanceTime = math.hypot(pointVector[0], pointVector[1]) / SPEED
     directions.append((startDistanceTime, startDistanceTime)) #investigate whether two motors at once gives different speed - must relate to rpm/SPEED issue
     
     for i in range(1, len(laserArray) - 1):
         prevPoint = laserArray[i - 1]
         curPoint = laserArray[i]
-        nextPoint = laserArray[1 + 1]
+        nextPoint = laserArray[i + 1]
+	if curPoint == nextPoint or prevPoint == curPoint: continue
+        #print "prevPoint: " + str(prevPoint)
+        #print "curPoint: " + str(curPoint)
+        #print "nextPoint: " + str(nextPoint)
         vector1 = (curPoint[0] - prevPoint[0], curPoint[1] - prevPoint[1])
         vector2 = (nextPoint[0] - curPoint[0], nextPoint[1] - curPoint[1])
-        curAngleTime = angleTime(vector1, vector2) #need to figure out whether to turn left or right (which engine to use)
+        #print "vector1: " + str(vector1)
+        #print "vector2: " + str(vector2)
+        directions.append(angleTime(vector1, vector2)) #tells angle to turn (if any)
 
         curDistanceTime = math.hypot(vector2[0], vector2[1]) / SPEED
         directions.append((curDistanceTime, curDistanceTime)) #investigate whether two motors at once gives different speed - must relate to rpm/SPEED issue
+        #print directions
 
     return directions        
 
-#need to figure out whether to turn left or right (which engine to use)
+#transform angles into times for specific engine to run
 def angleTime(v1, v2): 
     dot = v1[0] * v2[0] + v1[1] * v2[1]
     bottom = math.hypot(v1[0], v1[1]) * math.hypot(v2[0], v2[1])
+    #print "v1: " + str(v1) + "v2: " + str(v2)
     angle = math.acos(dot / bottom)
-    return WIDTH_OF_CAR * angle / SPEED
+    time = WIDTH_OF_CAR * angle / SPEED
+    answer = (None, None)
+    if (v1[0] * v2[1] - v1[1] * v2[0]) > 0: #2d-cross product tells you whether vector is to the right or left. negative = left, positive = right
+    	answer = (0, time)
+    else: answer = (0, time)
+    return answer
 
- 
 def getAverage(pixel):
     average = 0
     for num in pixel:
             average += num
     return average / len(pixel[:3])
-
+#########################################
+#tests
+#generate points for some shapes
+n = 500 # number of points
+r = 10
+circle = [(math.cos(2 * math.pi / n * x) * r, math.sin(2 * math.pi / n * x) * r) for x in xrange(0, n + 1)]
+rectangle = []
+n = 400
+for h1 in range(0, 100): rectangle.append((0, h1))
+for l1 in range(0, 200): rectangle.append((l1, 99))
+for h2 in range(99, -1, -1): rectangle.append((199, h2))
+for l2 in range(199, -1, -1): rectangle.append((l2, 0))
+start = (0, 0)
+#print rectangle
+print pointsToDirections(rectangle, start)
+print pointsToDirections(circle, start)
+'''
 #########################################
 laserArray = []
 cap = cv2.VideoCapture("video2.mp4")
@@ -165,4 +195,4 @@ print laserArray
 
 start = (int(width/2), 0) #starting position of the robot, might need to change.
 directions = pointsToDirections(laserArray, start)
-
+'''
