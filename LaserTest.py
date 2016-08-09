@@ -87,15 +87,13 @@ def pointsToDirections(laserArray, start):
     
     startDistanceTime = math.hypot(pointVector[0], pointVector[1]) / SPEED
     directions.append((startDistanceTime, startDistanceTime)) #investigate whether two motors at once gives different speed - must relate to rpm/SPEED issue
-    prevPoint = start 
     location = point
-    nextPoint = laserArray[1]
-    for i in range(0, len(laserArray) - 1):
+    for i in range(1, len(laserArray) - 1):
         prevPoint = laserArray[i - 1]
         curPoint = laserArray[i]
         nextPoint = laserArray[i + 1]
 	if not (location == nextPoint or location == prevPoint): 
-            vector1 = (curPoint[0] - prevPoint[0], curPoint[1] - prevPoint[1])
+            vector1 = (curPoint[0] - prevPoint[0], curPoint[1] - prevPoint[1])#need to compare location instead of using three consecutive points
             vector2 = (nextPoint[0] - curPoint[0], nextPoint[1] - curPoint[1])
             curAngleTime = angleTime(vector1, vector2)
             if curAngleTime != (0, 0):
