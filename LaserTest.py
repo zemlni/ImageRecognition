@@ -92,7 +92,7 @@ def pointsToDirections(laserArray, start, orientation):
         orientation = pointVector
     
     location = laserArray[0]
-    for i in range(1, len(laserArray) - 1):
+    for i in range(1, len(laserArray)):
         #prevPoint = laserArray[i - 1]
         #curPoint = laserArray[i]
         nextPoint = laserArray[i]
@@ -103,13 +103,14 @@ def pointsToDirections(laserArray, start, orientation):
             curAngleTime = angleTime(vector1, vector2)
             if curAngleTime != (0, 0):
                 directions.append(curAngleTime) #tells angle to turn (if any)
-                #print "turn"
 
             curDistanceTime = math.hypot(vector2[0], vector2[1]) / SPEED
             directions.append((curDistanceTime, curDistanceTime)) #investigate whether two motors at once gives different speed - must relate to rpm/SPEED issue
             #print directions
             orientation = vector2
             location = nextPoint #changed location
+            print "location: " + str(location) + " orientation: " + str(orientation)
+            
     return directions        
 
 #transform angles into times for specific engine to run
@@ -143,9 +144,16 @@ for h2 in range(9, -1, -1): rectangle.append((19, h2))
 for l2 in range(19, -1, -1): rectangle.append((l2, 0))
 start = (0, 0)
 orientation = (0, 1)
-print rectangle
-print pointsToDirections(rectangle, start, orientation)
-#print pointsToDirections(circle, start)
+#print rectangle #rectangle passes.
+#print pointsToDirections(rectangle, start, orientation)
+#print circle circle passes
+#print pointsToDirections(circle, start, orientation)
+#sameSpot = [(1, 1) for x in range(0, 10)] #sameSpot passes
+#print sameSpot 
+#print pointsToDirections(sameSpot, start, orientation)
+bigJump = [(0, 0), (100, 0), (0, 0)]
+print bigJump
+print pointsToDirections(bigJump, start, orientation)
 '''
 #########################################
 laserArray = []
