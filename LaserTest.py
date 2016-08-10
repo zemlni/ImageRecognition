@@ -1,6 +1,6 @@
 #import cv2
-import numpy as np
-import matplotlib.pyplot as plt
+#import numpy as np
+#import matplotlib.pyplot as plt
 import math
 
 #########################################
@@ -73,36 +73,42 @@ def getLocation(frame):
 
     return center
 
-def pointsToDirections(laserArray, start):
+def pointsToDirections(laserArray, start, orientation):
     directions = [] #tuples of format (t1, t2) where t1 = time for engine 1(left) to run, t2 = time for engine 2(right) to run.
 
     #first maneuver: navigate to first point of path
-    startVector = (start[0], start[1] + 1)#facing forward
-    #print startVector
-    point = laserArray[0]
-    #print point
-    pointVector = (point[0] - startVector[0], point[1] - startVector[1])
-    #print pointVector
-    directions.append(angleTime(startVector, pointVector)) #tells initial angle to turn (if any) 
+    if start != laserArray[0]:
+        #startVector = (start[0], start[1] + 1)#facing forward
+        startVector = orientation
+        #print startVector
+        point = laserArray[0]
+        #print point
+        pointVector = (point[0] - start[0], point[1] - start[1])
+        #print pointVector
+        directions.append(angleTime(startVector, pointVector)) #tells initial angle to turn (if any) 
     
-    startDistanceTime = math.hypot(pointVector[0], pointVector[1]) / SPEED
-    directions.append((startDistanceTime, startDistanceTime)) #investigate whether two motors at once gives different speed - must relate to rpm/SPEED issue
-    location = point
+        startDistanceTime = math.hypot(pointVector[0], pointVector[1]) / SPEED
+        directions.append((startDistanceTime, startDistanceTime)) #investigate whether two motors at once gives different speed - must relate to rpm/SPEED issue
+        orientation = pointVector
+    
+    location = laserArray[0]
     for i in range(1, len(laserArray) - 1):
-        prevPoint = laserArray[i - 1]
-        curPoint = laserArray[i]
-        nextPoint = laserArray[i + 1]
-	if not (location == nextPoint or location == prevPoint): 
-            vector1 = (curPoint[0] - prevPoint[0], curPoint[1] - prevPoint[1])#need to compare location instead of using three consecutive points
-            vector2 = (nextPoint[0] - curPoint[0], nextPoint[1] - curPoint[1])
+        #prevPoint = laserArray[i - 1]
+        #curPoint = laserArray[i]
+        nextPoint = laserArray[i]
+        #print i
+	if not (location == nextPoint): 
+            vector1 = orientation 
+            vector2 = (nextPoint[0] - location[0], nextPoint[1] - location[1])
             curAngleTime = angleTime(vector1, vector2)
             if curAngleTime != (0, 0):
                 directions.append(curAngleTime) #tells angle to turn (if any)
-                print "turn"
+                #print "turn"
 
             curDistanceTime = math.hypot(vector2[0], vector2[1]) / SPEED
             directions.append((curDistanceTime, curDistanceTime)) #investigate whether two motors at once gives different speed - must relate to rpm/SPEED issue
             #print directions
+            orientation = vector2
             location = nextPoint #changed location
     return directions        
 
@@ -116,7 +122,7 @@ def angleTime(v1, v2):
     answer = (None, None)
     if (v1[0] * v2[1] - v1[1] * v2[0]) > 0: #2d-cross product tells you whether vector is to the right or left. negative = left, positive = right
     	answer = (0, time)
-    else: answer = (0, time)
+    else: answer = (time, 0)
     return answer
 
 def getAverage(pixel):
@@ -136,8 +142,9 @@ for l1 in range(0, 20): rectangle.append((l1, 9))
 for h2 in range(9, -1, -1): rectangle.append((19, h2))
 for l2 in range(19, -1, -1): rectangle.append((l2, 0))
 start = (0, 0)
+orientation = (0, 1)
 print rectangle
-print pointsToDirections(rectangle, start)
+print pointsToDirections(rectangle, start, orientation)
 #print pointsToDirections(circle, start)
 '''
 #########################################
@@ -191,5 +198,6 @@ plt.show()
 print laserArray
 
 start = (int(width/2), 0) #starting position of the robot, might need to change.
+orientation = (0, 1)
 directions = pointsToDirections(laserArray, start)
 '''
