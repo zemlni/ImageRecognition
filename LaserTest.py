@@ -1,5 +1,5 @@
-#import cv2
-#import numpy as np
+import cv2
+import numpy as np
 import matplotlib.pyplot as plt
 import math
 from collections import OrderedDict
@@ -13,7 +13,7 @@ WIDTH_OF_CAR = 20 #pixels random width (back wheel to back wheel)
 #find coordinates of laser in a frame
 def getLocation(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    '''
+    
     #red can have two h values 0 and 180, check both
     #0:
     lower_red = np.array([0,50,50])
@@ -28,8 +28,8 @@ def getLocation(frame):
     lower_white = np.array([0,0,0], dtype=np.uint8)
     upper_white = np.array([0,0,255], dtype=np.uint8)
     mask = cv2.inRange(hsv, lower_white, upper_white)
-    
-    #mask = mask1 + mask2
+    '''
+    mask = mask1 + mask2
     mask = cv2.erode(mask, None, iterations=2)
     mask = cv2.dilate(mask, None, iterations=2)
     
@@ -38,6 +38,7 @@ def getLocation(frame):
     center = None
     
     if len(contours) > 0:
+        print "found"
         largestContour = max(contours, key=cv2.contourArea)
          
         #calculate moments of inertia of shape - weighted average.
@@ -154,7 +155,7 @@ orientation = (0, 1)
 
 #print fractions
 #print pointsToDirections(fractions, start, orientation)
-
+'''
 ### tests for perpendicularDistance ###
 #p1 = (0, 1)
 #line1 = ((-1, 0), (1, 0))
@@ -200,14 +201,14 @@ orientation = (0, 1)
 #########################################
 #main body
 laserArray = []
-cap = cv2.VideoCapture("video2.mp4")
+cap = cv2.VideoCapture("dark-box.mp4")
 while not cap.isOpened():
-    cap = cv2.VideoCapture("video2.mp4")
+    cap = cv2.VideoCapture("dark-circle.mp4")
     cv2.waitKey(1000)
     print "Wait for the header"
-width = cap.get(CV_CAP_PROP_FRAME_WIDTH)
-height = cap.get(CV_CAP_PROP_FRAME_HEIGHT)
-spectRatio = width/height
+width = cap.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH)
+height = cap.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT)
+aspectRatio = width/height
 
 while True:
     flag, frame = cap.read()
@@ -224,8 +225,9 @@ while True:
         #plt.plot(xs, ys, 'o')
         #plt.show()
         #need to magnify locations by aspect ratio to reflect original video, this should do it, need to check.
-        location[0] = location[0] * int(width / GOAL_WIDTH)
-        location[1] = location[1] * int(height / GOAL_HEIGHT)
+        location = (location[0] * int(width / GOAL_WIDTH),  location[1] * int(height / GOAL_HEIGHT))
+        #location[0] = location[0] * int(width / GOAL_WIDTH)
+        #location[1] = location[1] * int(height / GOAL_HEIGHT)
         laserArray.append(location)        
         
     else:
@@ -244,12 +246,14 @@ while True:
 
 xs = [x[0] for x in laserArray]
 ys = [x[1] for x in laserArray]
-plt.plot(xs, ys, '-')
+plt.plot(xs, ys, 'o')
 plt.show()
-print laserArray
+#print laserArray
+'''
 noDuplicates = list(OrderedDict.fromkeys(laserArray)) #introduces bug of never being able to go to the same exact spot twice.
 simplifiedPath = douglasPeucker(noDuplicates, 1)
 start = (int(width/2), 0) #starting position of the robot, might need to change.
 orientation = (0, 1)
-directions = pointsToDirections(simplifiedPath, start)
-'''
+directions = pointsToDirections(simplifiedPath, start, orientation)
+print directions'''
+
