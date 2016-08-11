@@ -8,85 +8,9 @@ from collections import OrderedDict
 #constants
 SPEED = 10 #pixel/s random speed for now
 WIDTH_OF_CAR = 20 #pixels random width (back wheel to back wheel)
-HUE_MIN = 20
-HUE_MAX = 160
-SAT_MIN = 100
-SAT_MAX = 255
-VAL_MIN = 200
-VAL_MAX = 256
-channels = {
-    'hue': None,
-    'saturation': None,
-    'value': None,
-    'laser': None,
-}
 #########################################
 
-def threshold_image(channel):
-    if channel == "hue":
-        minimum = HUE_MIN
-        maximum = HUE_MAX
-    elif channel == "saturation":
-        minimum = SAT_MIN
-        maximum = SAT_MAX
-    elif channel == "value":
-        minimum = VAL_MIN
-        maximum = VAL_MAX
-
-   (t, tmp) = cv2.threshold(
-        channels[channel], # src
-        maximum, # threshold value
-        0, # we dont care because of the selected type
-        cv2.THRESH_TOZERO_INV #t type
-    )
-
-    (t, channels[channel]) = cv2.threshold(
-        tmp, # src
-        minimum, # threshold value
-        255, # maxvalue
-        cv2.THRESH_BINARY # type
-    )
-
-    if channel == 'hue':
-        # only works for filtering red color because the range for the hue is split
-        channels['hue'] = cv2.bitwise_not(channels['hue'])
-
-def getLocation(frame):
-    hsv_img = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-    # split the video frame into color channels
-    h, s, v = cv2.split(hsv_img)
-    channels['hue'] = h
-    channels['saturation'] = s
-    channels['value'] = v
-
-    # Threshold ranges of HSV components; storing the results in place
-    threshold_image("hue")
-    threshold_image("saturation")
-    threshold_image("value")
-
-    # Perform an AND on HSV components to identify the laser!
-    channels['laser'] = cv2.bitwise_and(channels['hue'], channels['value'])
-
-    channels['laser'] = cv2.bitwise_and(channels['saturation'], channels['laser'])
-
-    #track
-    mask = channels['laser']
-    center = None
-    countours = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
-    
-    if len(countours) > 0:
-        print "found"
-        c = max(countours, key=cv2.contourArea)
-        ((x, y), radius) = cv2.minEnclosingCircle(c)
-        moments = cv2.moments(c)
-        if moments["m00"] > 0:
-            center = int(moments["m10"] / moments["m00"]), int(moments["m01"] / moments["m00"])
-        else:
-            center = int(x), int(y)
-    return center
-'''
-#find coordinates of laser in a frame ########## NOT WORKING ##########
+#find coordinates of laser in a frame
 def getLocation(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     
@@ -99,12 +23,12 @@ def getLocation(frame):
     lower_red = np.array([170,50,50])
     upper_red = np.array([180,255,255])
     mask2 = cv2.inRange(hsv, lower_red, upper_red)
-    
+    '''
     #white
     lower_white = np.array([0,0,0], dtype=np.uint8)
     upper_white = np.array([0,0,255], dtype=np.uint8)
     mask = cv2.inRange(hsv, lower_white, upper_white)
-    
+    '''
     mask = mask1 + mask2
     mask = cv2.erode(mask, None, iterations=2)
     mask = cv2.dilate(mask, None, iterations=2)
@@ -122,7 +46,7 @@ def getLocation(frame):
         center = (int(moments["m10"] / moments["m00"]), int(moments["m01"] / moments["m00"])) 
 
     return center
-'''
+
 #transform coordinates into directions for each engine
 def pointsToDirections(laserArray, startLocation, startOrientation):
     directions = [] #tuples of format (t1, t2) where t1 = time for engine 1(left) to run, t2 = time for engine 2(right) to run.
