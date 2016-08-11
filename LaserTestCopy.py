@@ -212,6 +212,10 @@ aspectRatio = width/height
 
 while True:
     flag, frame = cap.read()
+    if cap.get(cv2.cv.CV_CAP_PROP_POS_FRAMES) == cap.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT):
+        # If the number of captured frames is equal to the total number of frames,
+        # we stop
+        break
     if flag:
         pos_frame = cap.get(cv2.cv.CV_CAP_PROP_POS_FRAMES)
         GOAL_WIDTH = 300 #change if you want different width, height will change accordingly.
@@ -219,6 +223,7 @@ while True:
         size = (GOAL_WIDTH, int(GOAL_HEIGHT)) #might be the other way around, need to check
         frame = cv2.resize(frame, size, interpolation = cv2.INTER_AREA);
         location =  getLocation(frame)
+        if location == None: continue
 	#print "frame number" + str(pos_frame) 
         #xs = [x[0] for x in test]
         #ys = [x[1] for x in test]
@@ -238,10 +243,6 @@ while True:
         cv2.waitKey(1000)
 
     if cv2.waitKey(10) == 27:
-        break
-    if cap.get(cv2.cv.CV_CAP_PROP_POS_FRAMES) == cap.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT):
-        # If the number of captured frames is equal to the total number of frames,
-        # we stop
         break
 
 xs = [x[0] for x in laserArray]

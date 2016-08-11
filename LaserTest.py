@@ -22,6 +22,7 @@ channels = {
 }
 #########################################
 
+#wrapper for cv2.threshold function.
 def threshold_image(channel):
     if channel == "hue":
         minimum = HUE_MIN
@@ -33,11 +34,11 @@ def threshold_image(channel):
         minimum = VAL_MIN
         maximum = VAL_MAX
 
-   (t, tmp) = cv2.threshold(
+    (t, tmp) = cv2.threshold(
         channels[channel], # src
         maximum, # threshold value
         0, # we dont care because of the selected type
-        cv2.THRESH_TOZERO_INV #t type
+        cv2.THRESH_TOZERO_INV # type
     )
 
     (t, channels[channel]) = cv2.threshold(
@@ -51,6 +52,7 @@ def threshold_image(channel):
         # only works for filtering red color because the range for the hue is split
         channels['hue'] = cv2.bitwise_not(channels['hue'])
 
+#get location of the laser given a frame
 def getLocation(frame):
     hsv_img = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -76,7 +78,7 @@ def getLocation(frame):
     countours = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
     
     if len(countours) > 0:
-        print "found"
+        #print "found"
         c = max(countours, key=cv2.contourArea)
         ((x, y), radius) = cv2.minEnclosingCircle(c)
         moments = cv2.moments(c)
@@ -84,45 +86,9 @@ def getLocation(frame):
             center = int(moments["m10"] / moments["m00"]), int(moments["m01"] / moments["m00"])
         else:
             center = int(x), int(y)
+    #print center
     return center
-'''
-#find coordinates of laser in a frame ########## NOT WORKING ##########
-def getLocation(frame):
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    
-    #red can have two h values 0 and 180, check both
-    #0:
-    lower_red = np.array([0,50,50])
-    upper_red = np.array([10,255,255])
-    mask1 = cv2.inRange(hsv, lower_red, upper_red)
-    #180:
-    lower_red = np.array([170,50,50])
-    upper_red = np.array([180,255,255])
-    mask2 = cv2.inRange(hsv, lower_red, upper_red)
-    
-    #white
-    lower_white = np.array([0,0,0], dtype=np.uint8)
-    upper_white = np.array([0,0,255], dtype=np.uint8)
-    mask = cv2.inRange(hsv, lower_white, upper_white)
-    
-    mask = mask1 + mask2
-    mask = cv2.erode(mask, None, iterations=2)
-    mask = cv2.dilate(mask, None, iterations=2)
-    
-    #find contour from thresholded image:
-    contours, heirarchy = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    center = None
-    
-    if len(contours) > 0:
-        print "found"
-        largestContour = max(contours, key=cv2.contourArea)
-         
-        #calculate moments of inertia of shape - weighted average.
-        moments = cv2.moments(largestContour)
-        center = (int(moments["m10"] / moments["m00"]), int(moments["m01"] / moments["m00"])) 
 
-    return center
-'''
 #transform coordinates into directions for each engine
 def pointsToDirections(laserArray, startLocation, startOrientation):
     directions = [] #tuples of format (t1, t2) where t1 = time for engine 1(left) to run, t2 = time for engine 2(right) to run.
@@ -136,19 +102,17 @@ def pointsToDirections(laserArray, startLocation, startOrientation):
             #get angle to turn, if any
             curAngleTime = angleTime(vector1, vector2)
             if curAngleTime != (0, 0):
-                directions.append(curAngleTime) #tells angle to turn (if any)
+                directions.append(curAngleTime)
             #get distance to move forward, if any
             curDistanceTime = math.hypot(vector2[0], vector2[1]) / SPEED
             if curDistanceTime != (0, 0):
                 directions.append((curDistanceTime, curDistanceTime)) #investigate whether two motors at once gives different speed - must relate to rpm/SPEED issue
             orientation = vector2
             location = nextPoint #changed location
-            #print "location: " + str(location) + " orientation: " + str(orientation)
             
     return directions        
 
 #simplify curve so that all deviations smaller than epsilon are omitted, should help with jitterings in pixels. 
-#need to find a way to remove consecutive equal points, but not ones that indicate visiting the same spot twice. possibly in perpendicularDistance
 def douglasPeucker(pointList, epsilon):
     # Find the point with the maximum distance
     dmax = 0
@@ -162,11 +126,9 @@ def douglasPeucker(pointList, epsilon):
     
     # If max distance is greater than epsilon, recursively simplify
     if dmax > epsilon:
-        # Recursive call
         recResults1 = douglasPeucker(pointList[:index + 1], epsilon)
         recResults2 = douglasPeucker(pointList[index:], epsilon)
  
-        # Build the result list
         resultList = recResults1[:-1] + recResults2 #to avoid having index twice.
     else:
         resultList = [pointList[0], pointList[end]]
@@ -288,6 +250,9 @@ aspectRatio = width/height
 
 while True:
     flag, frame = cap.read()
+    if cap.get(cv2.cv.CV_CAP_PROP_POS_FRAMES) == cap.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT):
+        #need to check whether you are ever allowed to look at the last frame or not
+        break
     if flag:
         pos_frame = cap.get(cv2.cv.CV_CAP_PROP_POS_FRAMES)
         GOAL_WIDTH = 300 #change if you want different width, height will change accordingly.
@@ -295,16 +260,12 @@ while True:
         size = (GOAL_WIDTH, int(GOAL_HEIGHT)) #might be the other way around, need to check
         frame = cv2.resize(frame, size, interpolation = cv2.INTER_AREA);
         location =  getLocation(frame)
-	#print "frame number" + str(pos_frame) 
-        #xs = [x[0] for x in test]
-        #ys = [x[1] for x in test]
-        #plt.plot(xs, ys, 'o')
-        #plt.show()
-        #need to magnify locations by aspect ratio to reflect original video, this should do it, need to check.
+        if location == None: continue
+        
+        #magnify locations to match original video size, this should do it, need to check.
         location = (location[0] * int(width / GOAL_WIDTH),  location[1] * int(height / GOAL_HEIGHT))
-        #location[0] = location[0] * int(width / GOAL_WIDTH)
-        #location[1] = location[1] * int(height / GOAL_HEIGHT)
-        laserArray.append(location)        
+        if (len(laserArray) > 0 and laserArray[-1] != location) or (len(laserArray) == 0):
+            laserArray.append(location)        
         
     else:
         # The next frame is not ready, so we try to read it again
@@ -315,20 +276,18 @@ while True:
 
     if cv2.waitKey(10) == 27:
         break
-    if cap.get(cv2.cv.CV_CAP_PROP_POS_FRAMES) == cap.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT):
-        # If the number of captured frames is equal to the total number of frames,
-        # we stop
-        break
 
-xs = [x[0] for x in laserArray]
-ys = [x[1] for x in laserArray]
-plt.plot(xs, ys, 'o')
-plt.show()
+#plt.plot(xs, ys, 'o')
+#plt.show()
 #print laserArray
-'''
-noDuplicates = list(OrderedDict.fromkeys(laserArray)) #introduces bug of never being able to go to the same exact spot twice.
-simplifiedPath = douglasPeucker(noDuplicates, 1)
-start = (int(width/2), 0) #starting position of the robot, might need to change.
+#noDuplicates = list(OrderedDict.fromkeys(laserArray)) #introduces bug of never being able to go to the same exact spot twice.
+simplifiedPath = douglasPeucker(laserArray, 1)
+xs = [x[0] for x in simplifiedPath]
+ys = [x[1] for x in simplifiedPath]
+print xs
+print
+print ys
+'''start = (int(width/2), 0) #starting position of the robot, might need to change.
 orientation = (0, 1)
 directions = pointsToDirections(simplifiedPath, start, orientation)
 print directions'''
