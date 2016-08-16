@@ -26,6 +26,48 @@ LEFT_PIN =
 RIGHT_PIN = 
 #########################################
 
+#read video from file
+def readFromFile(path):
+    laserArray = []
+    cap = cv2.VideoCapture("light-circle.mp4")
+    while not cap.isOpened():
+        cap = cv2.VideoCapture("light-circle.mp4")
+        cv2.waitKey(1000)
+
+    width = cap.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH)
+    height = cap.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT)
+    aspectRatio = width/height
+
+    while True:
+        flag, frame = cap.read()
+        if cap.get(cv2.cv.CV_CAP_PROP_POS_FRAMES) == cap.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT):
+            #need to check whether you are ever allowed to look at the last frame or not
+            break
+        if flag:
+            pos_frame = cap.get(cv2.cv.CV_CAP_PROP_POS_FRAMES)
+            GOAL_WIDTH = 300 #change if you want different width, height will change accordingly.
+            GOAL_HEIGHT = GOAL_WIDTH / aspectRatio
+            size = (GOAL_WIDTH, int(GOAL_HEIGHT)) #might be the other way around, need to check
+            frame = cv2.resize(frame, size, interpolation = cv2.INTER_AREA);
+            location =  getLocation(frame)
+            if location == None: continue
+
+            #magnify locations to match original video size, this should do it, need to check.
+            location = (location[0] * int(width / GOAL_WIDTH),  location[1] * int(height / GOAL_HEIGHT))
+            if (len(laserArray) > 0 and laserArray[-1] != location) or (len(laserArray) == 0):
+                laserArray.append(location)
+
+        else:
+            # The next frame is not ready, so we try to read it again
+            cap.set(cv2.cv.CV_CAP_PROP_POS_FRAMES, pos_frame-1)
+            print "frame is not ready"
+            # It is better to wait for a while for the next frame to be ready
+            cv2.waitKey(1000)
+
+        if cv2.waitKey(10) == 27:
+            break
+    return laserArray
+
 #wrapper for cv2.threshold function.
 def threshold_image(channel):
     if channel == "hue":
@@ -118,6 +160,7 @@ def pointsToDirections(laserArray, startLocation, startOrientation):
             
     return directions        
 
+#execute directions given by function pointsToDirections.
 def executeDirections(direction):
     l = []
     if direction[0] != 0:
@@ -129,6 +172,7 @@ def executeDirections(direction):
     while getDifference(startTime, dateTime.now()) > l[0]: continue
     GPIO.output(l, 0)
 
+#return difference between two datetime objects.
 def getDifference(time1, time2):
     return ((time2.days * 24 * 60 * 60 + time2.seconds) * 1000 + time2.microseconds / 1000.0) - ((time1.days * 24 * 60 * 60 + time1.seconds) * 1000 + time1.microseconds / 1000.0)
 
@@ -258,46 +302,9 @@ orientation = (0, 1)
 #########################################
 #main body
 
-laserArray = []
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup([LEFT_PIN, RIGHT_PIN], GPIO.OUT)
-cap = cv2.VideoCapture("light-circle.mp4")
-while not cap.isOpened():
-    cap = cv2.VideoCapture("light-circle.mp4")
-    cv2.waitKey(1000)
-    print "Wait for the header"
-width = cap.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH)
-height = cap.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT)
-aspectRatio = width/height
-
-while True:
-    flag, frame = cap.read()
-    if cap.get(cv2.cv.CV_CAP_PROP_POS_FRAMES) == cap.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT):
-        #need to check whether you are ever allowed to look at the last frame or not
-        break
-    if flag:
-        pos_frame = cap.get(cv2.cv.CV_CAP_PROP_POS_FRAMES)
-        GOAL_WIDTH = 300 #change if you want different width, height will change accordingly.
-        GOAL_HEIGHT = GOAL_WIDTH / aspectRatio
-        size = (GOAL_WIDTH, int(GOAL_HEIGHT)) #might be the other way around, need to check
-        frame = cv2.resize(frame, size, interpolation = cv2.INTER_AREA);
-        location =  getLocation(frame)
-        if location == None: continue
-        
-        #magnify locations to match original video size, this should do it, need to check.
-        location = (location[0] * int(width / GOAL_WIDTH),  location[1] * int(height / GOAL_HEIGHT))
-        if (len(laserArray) > 0 and laserArray[-1] != location) or (len(laserArray) == 0):
-            laserArray.append(location)        
-        
-    else:
-        # The next frame is not ready, so we try to read it again
-        cap.set(cv2.cv.CV_CAP_PROP_POS_FRAMES, pos_frame-1)
-        print "frame is not ready"
-        # It is better to wait for a while for the next frame to be ready
-        cv2.waitKey(1000)
-
-    if cv2.waitKey(10) == 27:
-        break
+laserArray = readFromFile("light-circle.mp4")
 
 #simplifiedPath = douglasPeucker(laserArray, 10)
 xs = [x[0] for x in laserArray]
