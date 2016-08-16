@@ -130,7 +130,7 @@ def executeDirections(direction):
     GPIO.output(l, 0)
 
 def getDifference(time1, time2):
-    return ((time1.days * 24 * 60 * 60 + time1.seconds) * 1000 + time1.microseconds / 1000.0) - ((time1.days * 24 * 60 * 60 + time1.seconds) * 1000 + time1.microseconds / 1000.0)
+    return ((time2.days * 24 * 60 * 60 + time2.seconds) * 1000 + time2.microseconds / 1000.0) - ((time1.days * 24 * 60 * 60 + time1.seconds) * 1000 + time1.microseconds / 1000.0)
 
 #simplify curve so that all deviations smaller than epsilon are omitted, should help with jitterings in pixels. 
 def douglasPeucker(pointList, epsilon):
