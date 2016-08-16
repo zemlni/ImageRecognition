@@ -2,7 +2,8 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-from collections import OrderedDict
+import RPi.GPIO as GPIO
+from datetime import datetime
 
 #########################################
 #constants
@@ -13,13 +14,16 @@ HUE_MAX = 160
 SAT_MIN = 100
 SAT_MAX = 255
 VAL_MIN = 200
-VAL_MAX = 256
+VAL_MAX = 255
 channels = {
     'hue': None,
     'saturation': None,
     'value': None,
     'laser': None,
 }
+#pins for left and right engines.
+LEFT_PIN = 
+RIGHT_PIN = 
 #########################################
 
 #wrapper for cv2.threshold function.
@@ -89,7 +93,7 @@ def getLocation(frame):
     #print center
     return center
 
-#transform coordinates into directions for each engine
+#transform coordinates into directions for each engine and execute them
 def pointsToDirections(laserArray, startLocation, startOrientation):
     directions = [] #tuples of format (t1, t2) where t1 = time for engine 1(left) to run, t2 = time for engine 2(right) to run.
     
@@ -102,15 +106,31 @@ def pointsToDirections(laserArray, startLocation, startOrientation):
             #get angle to turn, if any
             curAngleTime = angleTime(vector1, vector2)
             if curAngleTime != (0, 0):
+                executeDirections(curAngleTime)
                 directions.append(curAngleTime)
             #get distance to move forward, if any
             curDistanceTime = math.hypot(vector2[0], vector2[1]) / SPEED
-            if curDistanceTime != (0, 0):
+            if curDistanceTime != 0:
+                executeDirections((curDistanceTime, curDistanceTime))
                 directions.append((curDistanceTime, curDistanceTime)) #investigate whether two motors at once gives different speed - must relate to rpm/SPEED issue
             orientation = vector2
             location = nextPoint #changed location
             
     return directions        
+
+def executeDirections(direction):
+    l = []
+    if direction[0] != 0:
+        l.append(LEFT_PIN)
+    if direction[1] != 0:
+        l.append(RIGHT_PIN)
+    GPIO.output(l, 1)
+    startTime = datetime.now()
+    while getDifference(startTime, dateTime.now()) > l[0]: continue
+    GPIO.output(l, 0)
+
+def getDifference(time1, time2):
+    return ((time1.days * 24 * 60 * 60 + time1.seconds) * 1000 + time1.microseconds / 1000.0) - ((time1.days * 24 * 60 * 60 + time1.seconds) * 1000 + time1.microseconds / 1000.0)
 
 #simplify curve so that all deviations smaller than epsilon are omitted, should help with jitterings in pixels. 
 def douglasPeucker(pointList, epsilon):
@@ -227,7 +247,6 @@ orientation = (0, 1)
 #make more tests to test out reduction of pixel jittering 
 
 #print len(rectangle)
-#rectangle = list(OrderedDict.fromkeys(rectangle)) #introduces bug of never being able to go to the same exact spot twice.
 #print len(douglasPeucker(rectangle, 1))
 #print len(douglasPeucker(rectangle, 2))
 #print len(douglasPeucker(rectangle, .5))
@@ -238,10 +257,13 @@ orientation = (0, 1)
 '''
 #########################################
 #main body
+
 laserArray = []
-cap = cv2.VideoCapture("dark-box.mp4")
+GPIO.setmode(GPIO.BOARD)
+GPIO.setup([LEFT_PIN, RIGHT_PIN], GPIO.OUT)
+cap = cv2.VideoCapture("light-circle.mp4")
 while not cap.isOpened():
-    cap = cv2.VideoCapture("dark-circle.mp4")
+    cap = cv2.VideoCapture("light-circle.mp4")
     cv2.waitKey(1000)
     print "Wait for the header"
 width = cap.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH)
@@ -277,18 +299,14 @@ while True:
     if cv2.waitKey(10) == 27:
         break
 
-#plt.plot(xs, ys, 'o')
-#plt.show()
-#print laserArray
-#noDuplicates = list(OrderedDict.fromkeys(laserArray)) #introduces bug of never being able to go to the same exact spot twice.
-simplifiedPath = douglasPeucker(laserArray, 1)
-xs = [x[0] for x in simplifiedPath]
-ys = [x[1] for x in simplifiedPath]
-print xs
-print
-print ys
+#simplifiedPath = douglasPeucker(laserArray, 10)
+xs = [x[0] for x in laserArray]
+ys = [x[1] for x in laserArray]
+plt.plot(xs, ys, '-')
+plt.show()
+#print len(simplifiedPath)
+print len(laserArray)
 '''start = (int(width/2), 0) #starting position of the robot, might need to change.
 orientation = (0, 1)
 directions = pointsToDirections(simplifiedPath, start, orientation)
 print directions'''
-
