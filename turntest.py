@@ -21,15 +21,15 @@ GPIO.output(Motor1Pin2, 0)
 
 GPIO.output(Motor2Pin1, 0)
 GPIO.output(Motor2Pin2, 1)
-
+time.sleep(5)
 GPIO.output(Motor1Enable, 1)
-time.sleep(.5)
-GPIO.output(Motor2Enable, 1)
+time.sleep(100)
+'''GPIO.output(Motor2Enable, 1)
 
 time.sleep(2)
 GPIO.output(Motor1Enable, 0)
 time.sleep(.5)
 GPIO.output(Motor1Enable, 1)
-time.sleep(2)
+time.sleep(2)'''
 GPIO.output(Motor1Enable, 0)
 GPIO.output(Motor2Enable, 0)

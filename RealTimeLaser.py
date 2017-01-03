@@ -5,6 +5,8 @@ import math
 import RPi.GPIO as GPIO
 from datetime import datetime
 import time
+from picamera.array import PiRGBArray
+from picamera import PiCamera
 
 #########################################
 # constants

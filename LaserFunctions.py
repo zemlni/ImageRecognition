@@ -5,34 +5,37 @@ import math
 import RPi.GPIO as GPIO
 from datetime import datetime
 import time
+from picamera.array import PiRGBArray
+from picamera import PiCamera
 
 #########################################
-# constants
-SPEED = 600  # pixel/s random speed for now
-WIDTH_OF_CAR = 200  # pixels random width (back wheel to back wheel)
-HUE_MIN = 20
-HUE_MAX = 160
-SAT_MIN = 100
-SAT_MAX = 255
-VAL_MIN = 200
-VAL_MAX = 255
-channels = {
-    'hue': None,
-    'saturation': None,
-    'value': None,
-    'laser': None,
-}
-# pins for left and right engines.
-Side1Pin1   = 11    # pin11
-Side1Pin2   = 12    # pin12
-Side1Enable = 13    # pin13
 
-Side2Pin1   = 15
-Side2Pin2   = 16
-Side2Enable = 18
+def extractLocation():
+    # initialize the camera and grab a reference to the raw camera capture
+    camera = PiCamera()
+    camera.resolution = (640, 480)
+    camera.framerate = 32
+    rawCapture = PiRGBArray(camera, size=(640, 480))
 
+    # allow the camera to warmup
+    time.sleep(0.1)
 
-#########################################
+    # capture frames from the camera
+    #for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+    for frame in camera.capture_continuous(rawCapture, use_video_port=True):
+        # grab the raw NumPy array representing the image, then initialize the timestamp
+        # and occupied/unoccupied text
+        image = frame.array
+
+        # show the frame
+        #cv2.imshow("Frame", image)
+        #cv2.imwrite('image' + str(i) + '.png',image)
+        key = cv2.waitKey(1) & 0xFF
+        
+        # clear the stream in preparation for the next frame
+        rawCapture.truncate(0)
+        location = getLocation(image)
+        yield location
 
 # read video from file
 def readFromFile(path):
@@ -200,13 +203,6 @@ def executeDirections(direction):
     #for pin in l: pin.stop()
 
 
-
-# return difference between two datetime objects.
-def getDifference(time1, time2):
-    return ((time2.days * 24 * 60 * 60 + time2.seconds) * 1000 + time2.microseconds / 1000.0) - (
-        (time1.days * 24 * 60 * 60 + time1.seconds) * 1000 + time1.microseconds / 1000.0)
-
-
 # simplify curve so that all deviations smaller than epsilon are omitted, should help with jitterings in pixels.
 def douglasPeucker(pointList, epsilon):
     # Find the point with the maximum distance
@@ -260,105 +256,3 @@ def getAverage(pixel):
     for num in pixel:
         average += num
     return average / len(pixel[:3])
-
-
-#########################################
-# tests
-# generate points for some shapes
-'''
-n = 500  # number of points
-r = 100
-circle = [(math.cos(2 * math.pi / n * x) * r, math.sin(2 * math.pi / n * x) * r) for x in range(0, n + 1)]
-rectangle = []
-for h1 in range(0, 10): rectangle.append((0, h1))
-for l1 in range(0, 20): rectangle.append((l1, 9))
-for h2 in range(9, -1, -1): rectangle.append((19, h2))
-for l2 in range(19, -1, -1): rectangle.append((l2, 0))
-fractions = [(.5, .5), (1.5, 1.5)]
-bigJump = [(0, 0), (100, 0), (0, 0)]
-sameSpot = [(1, 1) for x in range(0, 10)]
-start = (0, 0)
-orientation = (0, 1)
-
-### tests for pointsToDirections ###
-# print rectangle
-# print pointsToDirections(rectangle, start, orientation)
-
-# print circle
-# print pointsToDirections(circle, start, orientation)
-
-# print sameSpot
-# print pointsToDirections(sameSpot, start, orientation)
-
-# print bigJump
-# print pointsToDirections(bigJump, start, orientation)
-
-# print fractions
-# print pointsToDirections(fractions, start, orientation)
-'''
-### tests for perpendicularDistance ###
-#p1 = (0, 1)
-#line1 = ((-1, 0), (1, 0))
-#print perpendicularDistance(p1, line1)
-
-#p2 = (1, 0)
-#line2 = ((0, 1), (0, -1))
-#print perpendicularDistance(p2, line2)
-#print perpendicularDistance(p2, line1)
-
-#p3 = (0, 0)
-#line3 = ((0, 1), (1, 0))
-#print perpendicularDistance(p3, line3)
-
-### tests for douglasPeucker ###
-#simpleCircle1 = douglasPeucker(circle, 1)
-#print len(simpleCircle1)
-#print simpleCircle1
-#xs = [x[0] for x in simpleCircle1]
-#ys = [x[1] for x in simpleCircle1]
-#plt.plot(xs, ys, '--')
-#xc = [x[0] for x in circle]
-#yc = [x[1] for x in circle]
-#plt.plot(xc, yc, '-')
-#plt.show()
-
-#print len(douglasPeucker(circle, .5))
-#print len(douglasPeucker(circle, .1))
-#print len(douglasPeucker(circle, 2))
-#print len(douglasPeucker(circle, 5))
-#make more tests to test out reduction of pixel jittering
-
-#print len(rectangle)
-#print len(douglasPeucker(rectangle, 1))
-#print len(douglasPeucker(rectangle, 2))
-#print len(douglasPeucker(rectangle, .5))
-#print douglasPeucker(rectangle, 1)
-
-#print bigJump
-#print douglasPeucker(bigJump, 1)
-'''
-'''
-#########################################
-# main body
-
-GPIO.setmode(GPIO.BOARD)
-GPIO.setup([Side1Pin1, Side1Pin2, Side1Enable, Side2Pin1, Side2Pin2, Side2Enable], GPIO.OUT)
-#p1 = GPIO.PWM(Side1Enable, 30)
-#p2 = GPIO.PWM(Side2Enable, 30)
-#laserArray = readFromFile("videos/dark-box.mp4")
-#print len(laserArray)
-#laserArray = douglasPeucker(laserArray, 10)
-#print len(laserArray)
-laserArray = [(978, 654), (966, 684), (834, 678), (654, 624), (672, 252), (960, 210), (1002, 228), (960, 624), (816, 648), (642, 612), (678, 402), (654, 216), (1008, 222), (852, 414), (666, 570), (702, 192), (846, 342), (966, 534)]
- 
-
-#xs = [x[0] for x in laserArray]
-#ys = [x[1] for x in laserArray]
-#plt.plot(xs, ys, '-')
-#plt.show()
-
-start = (978, 654) #starting position of the robot, might need to change.
-orientation = (0, 1)
-directions = pointsToDirections(laserArray, start, orientation)
-print directions
-
