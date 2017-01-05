@@ -39,6 +39,7 @@ def extractLocation(queue):
     camera = PiCamera()
     camera.resolution = (640, 480)
     camera.framerate = 32
+    camera.vflip = True
     rawCapture = PiRGBArray(camera, size=(640, 480))
 
     # allow the camera to warmup
@@ -47,8 +48,8 @@ def extractLocation(queue):
     # capture frames from the camera
     previous = None
     M = getPerspectiveTransform()
-    #for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-    for frame in camera.capture_continuous(rawCapture, use_video_port=True):
+    for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+        #for frame in camera.capture_continuous(rawCapture, use_video_port=True):
         # grab the raw NumPy array representing the image, then initialize the timestamp
         # and occupied/unoccupied text
         image = frame.array
