@@ -65,13 +65,15 @@ def extractLocation(queue):
         # clear the stream in preparation for the next frame
         rawCapture.truncate(0)
         location = getLocation(image)
-        print location
+        print i, location
         if location is not None and (previous is None or math.hypot(location[0] - previous[0], location[1] - previous[1]) > 10) and location is not None: #WRONG - previous doesn't represent anything
             queue.put(location)
             previous = location
         #yield location
 
 def move(queue):
+    GPIO.setmode(GPIO.BOARD)
+    GPIO.setup([Side1Pin1, Side1Pin2, Side1Enable, Side2Pin1, Side2Pin2, Side2Enable], GPIO.OUT)
     directions = []
     while True:
         nextLocation = queue.get()
