@@ -1,4 +1,4 @@
-import RPi.GPIO as GPIO
+'''import RPi.GPIO as GPIO
 import time
 
 Motor1Pin1   = 11    # pin11
@@ -28,3 +28,27 @@ GPIO.output(Motor2Enable, 1)
 time.sleep(4)
 GPIO.output(Motor1Enable, 0)
 GPIO.output(Motor2Enable, 0)
+'''
+import numpy as np
+import math
+from multiprocessing import Queue
+
+v1 = (1, 1)
+v2 = (1, 2)
+dot = v1[0] * v2[0] + v1[1] * v2[1]
+bottom = math.hypot(v1[0], v1[1]) * math.hypot(v2[0], v2[1])
+angle = math.acos(dot / bottom)
+print angle
+
+print v2[0] * v1[1] - v2[1] * v1[0]# 2d-cross product tells you whether vector is to the right or left. negative = left, positive = right
+q = Queue()
+print q.qsize()
+
+angle = math.pi
+matrix = np.matrix([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+v1 = np.matrix(v1).transpose()
+print v1
+l = (matrix*v1).A.T
+print tuple([i for x in l for i in x])
+print matrix
+

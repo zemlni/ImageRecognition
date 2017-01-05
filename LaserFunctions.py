@@ -7,10 +7,34 @@ from datetime import datetime
 import time
 from picamera.array import PiRGBArray
 from picamera import PiCamera
+from multiprocessing import Queue
+from Queue import Empty
 
 #########################################
+SPEED = 600  # pixel/s random speed for now
+WIDTH_OF_CAR = 200  # pixels random width (back wheel to back wheel)
+HUE_MIN = 20
+HUE_MAX = 160
+SAT_MIN = 100
+SAT_MAX = 255
+VAL_MIN = 200
+VAL_MAX = 255
+channels = {
+    'hue': None,
+    'saturation': None,
+    'value': None,
+    'laser': None,
+}
+# pins for left and right engines.
+Side1Pin1   = 11    # pin11
+Side1Pin2   = 12    # pin12
+Side1Enable = 13    # pin13
 
-def extractLocation():
+Side2Pin1   = 15
+Side2Pin2   = 16
+Side2Enable = 18
+#########################################
+def extractLocation(queue):
     # initialize the camera and grab a reference to the raw camera capture
     camera = PiCamera()
     camera.resolution = (640, 480)
@@ -21,6 +45,7 @@ def extractLocation():
     time.sleep(0.1)
 
     # capture frames from the camera
+    previous = None
     #for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
     for frame in camera.capture_continuous(rawCapture, use_video_port=True):
         # grab the raw NumPy array representing the image, then initialize the timestamp
@@ -35,7 +60,53 @@ def extractLocation():
         # clear the stream in preparation for the next frame
         rawCapture.truncate(0)
         location = getLocation(image)
-        yield location
+        if previous is None or math.hypot(location[0] - previous[0], location[1] - previous[1]) > 10: #WRONG - previous doesn't represent anything
+            queue.put(location)
+        #yield location
+
+def move(queue):
+    directions = []
+    while True:
+        nextLocation = queue.get()
+        vector1 = (0, 1)
+        vector2 = (nextLocation[0] - 640/2, nextLocation[1])
+        curAngleTime, angle = angleTime(vector1, vector2)
+        if curAngleTime != (0, 0):
+            executeDirections(curAngleTime)
+            directions.append(curAngleTime) #debugging purposes
+        queue = rotate(queue, angle)
+        curDistanceTime = math.hypot(vector2[0], vector2[1])
+        if curDistanceTime != 0:
+            executeDirections((curDistanceTime, curDistanceTime))
+            directions.append((curDistanceTime, curDistanceTime))
+        queue = translate(queue, vector2)
+
+def rotate(queue, angle):
+    answer = Queue()
+    matrix = np.matrix([[math.cos(angle), -math.sin(angle)], [math.sin(angle), math.cos(angle)]])
+    while True:
+        try:
+            elem = queue.get()
+            elem = np.matrix(elem).transpose()
+            mul = (matrix * elem).A.T
+            elem = tuple([i for x in mul for i in x])
+            answer.put(elem)
+        except Empty:
+            break
+    return answer
+
+
+def translate(queue, newLocation):
+    answer = Queue()
+    while True:
+        try:
+            elem = queue.get()
+            elem = (newLocation[0] - elem[0], newLocation[1] - elem[1])
+            answer.put(elem)
+        except Empty:
+            break
+    return answer
+
 
 # read video from file
 def readFromFile(path):
@@ -83,6 +154,7 @@ def readFromFile(path):
 
 # wrapper for cv2.threshold function.
 def threshold_image(channel):
+
     if channel == "hue":
         minimum = HUE_MIN
         maximum = HUE_MAX
@@ -162,7 +234,7 @@ def pointsToDirections(laserArray, startLocation, startOrientation):
         else: continue
         vector2 = (nextPoint[0] - location[0], nextPoint[1] - location[1])
         # get angle to turn, if any
-        curAngleTime = angleTime(vector1, vector2)
+        curAngleTime = angleTime(vector1, vector2)[0]
         if curAngleTime != (0, 0):
             executeDirections(curAngleTime)
             directions.append(curAngleTime)
@@ -244,11 +316,12 @@ def angleTime(v1, v2):
     angle = math.acos(dot / bottom)
     execTime = angle/(2 * math.pi) * revTime
     answer = (None, None)
-    if (v1[0] * v2[1] - v1[1] * v2[0]) > 0:  # 2d-cross product tells you whether vector is to the right or left. negative = left, positive = right
+    if (v1[0] * v2[1] - v1[1] * v2[0]) > 0:  # 2d-cross product tells you whether vector is to the right or left. negative = right positive = left
         answer = (0, execTime)
     else:
         answer = (execTime, 0)
-    return answer
+        angle = -angle
+    return answer, angle
 
 
 def getAverage(pixel):

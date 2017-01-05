@@ -1,12 +1,14 @@
-import threading
+from multiprocessing import Process, Queue
 from LaserFunctions import *
 
-threads = []
-t1 = threading.Thread(target=extractLocation)
-threads.append(t1)
-t2 = threading.Thread(target=pointsToDirection)
-threads.append(t2)
+#robot is always at the middle bottom of the screen
+start = (640/2, 0)
+orientation = (0, 1)
 
-for thread in threads:
-    thread.start()
-#need to figure out how to pass variables between two threads
+queue = Queue()
+#reference frame updated on each frame
+locationProcess = Process(target=extractLocation, args=(queue,))
+execProcess = Process(target=pointsToDirections, args=(queue, ))
+processes = [locationProcess, execProcess]
+for process in processes:
+    process.start()
