@@ -46,6 +46,7 @@ def extractLocation(queue):
 
     # capture frames from the camera
     previous = None
+    M = getPerspectiveTransform()
     #for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
     for frame in camera.capture_continuous(rawCapture, use_video_port=True):
         # grab the raw NumPy array representing the image, then initialize the timestamp
@@ -55,11 +56,13 @@ def extractLocation(queue):
         # show the frame
         #cv2.imshow("Frame", image)
         #cv2.imwrite('image' + str(i) + '.png',image)
-        key = cv2.waitKey(1) & 0xFF
-        
+        #key = cv2.waitKey(1) & 0xFF
+
+        image = cv2.warpPerspective(image, M, (640, 480))
         # clear the stream in preparation for the next frame
         rawCapture.truncate(0)
         location = getLocation(image)
+        print location
         if previous is None or math.hypot(location[0] - previous[0], location[1] - previous[1]) > 10: #WRONG - previous doesn't represent anything
             queue.put(location)
         #yield location
@@ -106,6 +109,13 @@ def translate(queue, newLocation):
         except Empty:
             break
     return answer
+
+def getPerspectiveTransform():
+    pts = np.array([(2546, 1323), (2048, 1145), (625, 1177), (179, 1397)], dtype="float32")
+    height, width = 1944, 2592
+    dst = np.array([(2592 - 108, 1944 - 57.5), (2592 - 108, 57.5), (108, 57.5,), (108, 1944 - 57.5)], dtype="float32")
+    M = cv2.getPerspectiveTransform(pts, dst)
+    return M
 
 
 # read video from file
