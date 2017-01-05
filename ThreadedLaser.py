@@ -8,7 +8,7 @@ orientation = (0, 1)
 queue = Queue()
 #reference frame updated on each frame
 locationProcess = Process(target=extractLocation, args=(queue,))
-execProcess = Process(target=pointsToDirections, args=(queue, ))
+execProcess = Process(target=move, args=(queue, ))
 processes = [locationProcess, execProcess]
 for process in processes:
     process.start()

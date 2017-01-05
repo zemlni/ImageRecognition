@@ -44,7 +44,7 @@ def extractLocation(queue):
 
     # allow the camera to warmup
     time.sleep(0.1)
-
+    i = 0
     # capture frames from the camera
     previous = None
     M = getPerspectiveTransform()
@@ -60,12 +60,15 @@ def extractLocation(queue):
         #key = cv2.waitKey(1) & 0xFF
 
         image = cv2.warpPerspective(image, M, (640, 480))
+        cv2.imwrite('image' + str(i) + '.png',image)
+        i += 1 
         # clear the stream in preparation for the next frame
         rawCapture.truncate(0)
         location = getLocation(image)
         print location
-        if (math.hypot(location[0] - previous[0], location[1] - previous[1]) > 10) and location is not None: #WRONG - previous doesn't represent anything
+        if location is not None and (previous is None or math.hypot(location[0] - previous[0], location[1] - previous[1]) > 10) and location is not None: #WRONG - previous doesn't represent anything
             queue.put(location)
+            previous = location
         #yield location
 
 def move(queue):
