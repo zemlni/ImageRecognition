@@ -63,7 +63,7 @@ def extractLocation(queue):
         rawCapture.truncate(0)
         location = getLocation(image)
         print location
-        if previous is None or math.hypot(location[0] - previous[0], location[1] - previous[1]) > 10: #WRONG - previous doesn't represent anything
+        if (math.hypot(location[0] - previous[0], location[1] - previous[1]) > 10) and location is not None: #WRONG - previous doesn't represent anything
             queue.put(location)
         #yield location
 
@@ -111,9 +111,8 @@ def translate(queue, newLocation):
     return answer
 
 def getPerspectiveTransform():
-    pts = np.array([(2546, 1323), (2048, 1145), (625, 1177), (179, 1397)], dtype="float32")
-    height, width = 1944, 2592
-    dst = np.array([(2592 - 108, 1944 - 57.5), (2592 - 108, 57.5), (108, 57.5,), (108, 1944 - 57.5)], dtype="float32")
+    pts = np.array([(628, 326), (447, 280), (152, 291), (44, 344)], dtype="float32")
+    dst = np.array([(640 - 172, 480 - 126), (640 - 172, 126), (172, 126), (172, 480 - 126)], dtype="float32")
     M = cv2.getPerspectiveTransform(pts, dst)
     return M
 

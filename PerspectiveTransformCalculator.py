@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 
 im = cv2.imread('test.jpg')
+im = cv2.resize(im, (640, 480))
 imgray = cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
 ret,thresh = cv2.threshold(imgray,127,255,0)
 contours, _ = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
@@ -23,7 +24,7 @@ print approx
 #cv2.drawContours(im, [approx], 0, (0,255,0), 3)
 #im = cv2.resize(im, None, fx=0.5, fy=0.5, interpolation = cv2.INTER_CUBIC)
 #cv2.imshow("TEST", im)
-
+'''
 def order_points(pts):
     # initialzie a list of coordinates that will be ordered
     # such that the first entry in the list is the top-left,
@@ -46,8 +47,8 @@ def order_points(pts):
 
     # return the ordered coordinates
     return rect
-
-
+'''
+'''
 def four_point_transform(image, pts):
     # obtain a consistent order of the points and unpack them
     # individually
@@ -86,9 +87,10 @@ def four_point_transform(image, pts):
 
     # return the warped image
     return warped
-pts = np.array([(2546, 1323), (2048, 1145), (625, 1177), (179, 1397)], dtype = "float32")
+    '''
+pts = np.array([(628, 326), (447, 280), (152, 291), (44, 344)], dtype = "float32")
 height, width = im.shape[:2]
-dst = np.array([(2592-108, 1944-57.5), (2592-108, 57.5), (108, 57.5,), (108, 1944-57.5)], dtype="float32")
+dst = np.array([(640 - 172, 480 - 126), (640 - 172, 126), (172, 126), (172, 480 - 126)], dtype="float32")
 M = cv2.getPerspectiveTransform(pts, dst)
 warped = cv2.warpPerspective(im, M, (width, height))
 im = cv2.resize(im, None, fx=0.5, fy=0.5, interpolation = cv2.INTER_CUBIC)
