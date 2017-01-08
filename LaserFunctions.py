@@ -7,17 +7,18 @@ from datetime import datetime
 import time
 from picamera.array import PiRGBArray
 from picamera import PiCamera
-from multiprocessing import Queue
-from Queue import Empty
+from multiprocessing import Queue, Lock
+#from Queue import Empty
+from collections import deque
 
 #########################################
 SPEED = 600  # pixel/s random speed for now
 WIDTH_OF_CAR = 200  # pixels random width (back wheel to back wheel)
-HUE_MIN = 20
-HUE_MAX = 160
+HUE_MIN = 10
+HUE_MAX = 170
 SAT_MIN = 100
 SAT_MAX = 255
-VAL_MIN = 200
+VAL_MIN = 100
 VAL_MAX = 255
 channels = {
     'hue': None,
@@ -34,12 +35,14 @@ Side2Pin1   = 15
 Side2Pin2   = 16
 Side2Enable = 18
 #########################################
-def extractLocation(queue):
+def extractLocation(queue, lock):
     # initialize the camera and grab a reference to the raw camera capture
     camera = PiCamera()
     camera.resolution = (640, 480)
     camera.framerate = 32
     camera.vflip = True
+    #camera.contrast = 20
+    camera.led = False
     rawCapture = PiRGBArray(camera, size=(640, 480))
 
     # allow the camera to warmup
@@ -53,72 +56,106 @@ def extractLocation(queue):
         # grab the raw NumPy array representing the image, then initialize the timestamp
         # and occupied/unoccupied text
         image = frame.array
+        #cv2.imwrite('image' + str(i) + '.png',image)
 
         # show the frame
         #cv2.imshow("Frame", image)
         #cv2.imwrite('image' + str(i) + '.png',image)
         #key = cv2.waitKey(1) & 0xFF
-
+        #cv2.imwrite('image' + str(i) + '.png',image)
         image = cv2.warpPerspective(image, M, (640, 480))
-        cv2.imwrite('image' + str(i) + '.png',image)
-        i += 1 
+        #cv2.imwrite('warpedimage' + str(i) + '.png',image)
         # clear the stream in preparation for the next frame
         rawCapture.truncate(0)
         location = getLocation(image)
         print i, location
-        if location is not None and (previous is None or math.hypot(location[0] - previous[0], location[1] - previous[1]) > 10) and location is not None: #WRONG - previous doesn't represent anything
+        if location is not None: # and (previous is None or math.hypot(location[0] - previous[0], location[1] - previous[1]) > 10) and location is not None: #WRONG - previous doesn't represent anything
             queue.put(location)
-            previous = location
+            #previous = location
+            cv2.circle(image, (location), 5, (0,255,0), 3)
         #yield location
+        cv2.imwrite('image' + str(i) + '.png',image)
+        i += 1
 
-def move(queue):
+def move(queue, lock):
     GPIO.setmode(GPIO.BOARD)
     GPIO.setup([Side1Pin1, Side1Pin2, Side1Enable, Side2Pin1, Side2Pin2, Side2Enable], GPIO.OUT)
     directions = []
     while True:
+        print "TEST"
+        lock.acquire()
         nextLocation = queue.get()
-        vector1 = (0, 1)
-        vector2 = (nextLocation[0] - 640/2, nextLocation[1])
+        lock.release()
+        '''
+        if len(queue) <= 0: 
+            print "EMPTY"
+            continue
+        '''
+        #nextLocation = queue.pop()
+        print "move", nextLocation
+        vector1 = (0, -1)
+        vector2 = (nextLocation[0] - 640/2, nextLocation[1] - 480)
         curAngleTime, angle = angleTime(vector1, vector2)
         if curAngleTime != (0, 0):
             executeDirections(curAngleTime)
             directions.append(curAngleTime) #debugging purposes
-        queue = rotate(queue, angle)
-        curDistanceTime = math.hypot(vector2[0], vector2[1])
+        #queue = rotate(queue, angle)
+        lock.acquire()
+        rotate(queue, angle)
+        lock.release()
+        curDistanceTime = math.hypot(vector2[0], vector2[1])/SPEED
         if curDistanceTime != 0:
             executeDirections((curDistanceTime, curDistanceTime))
             directions.append((curDistanceTime, curDistanceTime))
-        queue = translate(queue, vector2)
+        lock.acquire()
+        translate(queue, vector2)
+        lock.release()
+        #time.sleep(.01)
 
 def rotate(queue, angle):
     answer = Queue()
     matrix = np.matrix([[math.cos(angle), -math.sin(angle)], [math.sin(angle), math.cos(angle)]])
-    while True:
-        try:
-            elem = queue.get()
-            elem = np.matrix(elem).transpose()
-            mul = (matrix * elem).A.T
-            elem = tuple([i for x in mul for i in x])
-            answer.put(elem)
-        except Empty:
-            break
-    return answer
-
+    print "rotate"
+    
+    while not queue.empty():
+        elem = queue.get()
+        elem = np.matrix(elem).transpose()
+        mul = (matrix * elem).A.T
+        elem = tuple([i for x in mul for i in x])
+        answer.put(elem)
+    #queue = answer
+    while not answer.empty():
+        queue.put(answer.get())
+    '''
+    for i in range(0, len(queue)):
+        elem = queue[i]
+        elem = np.matrix(elem).transpose()
+        mul = (matrix * elem).A.T
+        elem = tuple([i for x in mul for i in x])
+        queue[i] = elem 
+    '''
 
 def translate(queue, newLocation):
     answer = Queue()
-    while True:
-        try:
-            elem = queue.get()
-            elem = (newLocation[0] - elem[0], newLocation[1] - elem[1])
-            answer.put(elem)
-        except Empty:
-            break
-    return answer
+    print "translate"
+    
+    while not queue.empty():
+        elem = queue.get()
+        elem = (newLocation[0] - elem[0], newLocation[1] - elem[1])
+        answer.put(elem)
+    while not answer.empty():
+        queue.put(answer.get())
+    #queue = answer
+    '''
+    for i in range(0, len(queue)):
+        elem = queue[i]
+        queue[i] = (newLocation[0] - elem[0], newLocation[1] - elem[1])
+    '''
 
 def getPerspectiveTransform():
     pts = np.array([(628, 326), (447, 280), (152, 291), (44, 344)], dtype="float32")
-    dst = np.array([(640 - 172, 480 - 126), (640 - 172, 126), (172, 126), (172, 480 - 126)], dtype="float32")
+    #dst = np.array([(640 - 172, 480 - 126), (640 - 172, 126), (172, 126), (172, 480 - 126)], dtype="float32")
+    dst = np.array([(640 - round((640 - 147.5) / 2), 340), (640 - round((640 - 147.5) / 2), 340 - 114), (round((640 - 147.5) / 2), 340 - 114), (round((640 - 147.5) / 2), 340)], dtype="float32")
     M = cv2.getPerspectiveTransform(pts, dst)
     return M
 
@@ -266,6 +303,7 @@ def pointsToDirections(laserArray, startLocation, startOrientation):
 
 
 def executeDirections(direction):
+    print "exec"
     l = []
     if direction[0] != 0:
         l.append(Side1Enable)
