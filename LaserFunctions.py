@@ -12,13 +12,21 @@ from multiprocessing import Queue, Lock
 from collections import deque
 
 #########################################
-SPEED = 600  # pixel/s random speed for now
+SPEED = 500  # pixel/s random speed for now
 WIDTH_OF_CAR = 200  # pixels random width (back wheel to back wheel)
+'''
 HUE_MIN = 10
 HUE_MAX = 170
 SAT_MIN = 100
 SAT_MAX = 255
 VAL_MIN = 100
+VAL_MAX = 255
+'''
+HUE_MIN = 5
+HUE_MAX = 175
+SAT_MIN = 100
+SAT_MAX = 255
+VAL_MIN = 50
 VAL_MAX = 255
 channels = {
     'hue': None,
@@ -40,8 +48,11 @@ def extractLocation(queue, lock):
     camera = PiCamera()
     camera.resolution = (640, 480)
     camera.framerate = 32
-    camera.vflip = True
-    #camera.contrast = 20
+    camera.hflip = True
+    #camera.vflip = True
+    #camera.awb = 'sunlight'
+    camera.brightness = 20
+    camera.contrast = 50
     camera.led = False
     rawCapture = PiRGBArray(camera, size=(640, 480))
 
@@ -153,9 +164,8 @@ def translate(queue, newLocation):
     '''
 
 def getPerspectiveTransform():
-    pts = np.array([(628, 326), (447, 280), (152, 291), (44, 344)], dtype="float32")
-    #dst = np.array([(640 - 172, 480 - 126), (640 - 172, 126), (172, 126), (172, 480 - 126)], dtype="float32")
-    dst = np.array([(640 - round((640 - 147.5) / 2), 340), (640 - round((640 - 147.5) / 2), 340 - 114), (round((640 - 147.5) / 2), 340 - 114), (round((640 - 147.5) / 2), 340)], dtype="float32")
+    pts = np.array([(448, 385), (412, 345), (213, 348), (182, 387)], dtype = "float32")
+    dst = np.array([(640 - round((640 - 50) / 2), 386), (640 - round((640 - 50) / 2), 386 -39), (round((640 - 50) / 2), 386 - 39), (round((640 - 50) / 2), 386)], dtype="float32")
     M = cv2.getPerspectiveTransform(pts, dst)
     return M
 
