@@ -5,6 +5,8 @@ The robot operates as follows:
 2. Using the OpenCV library, the images are processed and the location of the laser is identified.
 3. The location is converted from the frame of reference of the camera (as seen on the image) to the frame of the robot (2d as if viewing cartesian plane from above).
 4. Directions are sent to each side (two motors on each side) for how long to run.
+## Multiprocessing
+Two processes are used. The first process handles processing the images and extracting the location of the laser. The second process transforms these locations into directions to the motor and executes them.
 ## Files
 The file LaserFunctions.py contains all relevant functions for the robot. Other files are included only for testing purposes and were used in preliminary stages of development.
 ## Video
