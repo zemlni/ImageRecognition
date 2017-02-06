@@ -1,7 +1,7 @@
 import threading
 import time
 
-a = [] 
+a = []
 
 def t2():
     for i in range (0, 1000):

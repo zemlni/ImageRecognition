@@ -1,27 +1,29 @@
 import cv2
 import numpy as np
 
-im = cv2.imread('test.jpg')
-im = cv2.resize(im, (640, 480))
+im = cv2.imread('test.png')
+#im = cv2.resize(im, (640, 480))
 imgray = cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
-ret,thresh = cv2.threshold(imgray,127,255,0)
+ret,thresh = cv2.threshold(imgray,200,255,0)
+#cv2.imshow("TEST", thresh)
 contours, _ = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 contours = sorted(contours, key = cv2.contourArea, reverse = True)
-'''
+
 for c in contours:
     peri = cv2.arcLength(c, True)
-    approx = cv2.approxPolyDP(c, 0.1 * peri, True)
+    approx = cv2.approxPolyDP(c, 0.005 * peri, True)
+    #cv2.drawContours(im, [c], 0, (0, 255, 0), 3)
     if len(approx) == 4:
         screenCnt = approx
         print "TEST"
         break
-'''
-cnt = contours[1]
-peri = cv2.arcLength(cnt, True)
-approx = cv2.approxPolyDP(cnt, 0.01 * peri, True)
+
+cnt = screenCnt
+#peri = cv2.arcLength(cnt, True)
+#approx = cv2.approxPolyDP(cnt, 0.01 * peri, True)
 
 print approx
-#cv2.drawContours(im, [approx], 0, (0,255,0), 3)
+cv2.drawContours(im, [cnt], 0, (0,255,0), 3)
 #im = cv2.resize(im, None, fx=0.5, fy=0.5, interpolation = cv2.INTER_CUBIC)
 #cv2.imshow("TEST", im)
 '''
@@ -88,17 +90,17 @@ def four_point_transform(image, pts):
     # return the warped image
     return warped
     '''
-pts = np.array([(628, 326), (447, 280), (152, 291), (44, 344)], dtype = "float32")
+pts = np.array([(448, 385), (412, 345), (213, 348), (182, 387)], dtype = "float32")
 height, width = im.shape[:2]
-dst = np.array([(640 - 172, 480 - 126), (640 - 172, 126), (172, 126), (172, 480 - 126)], dtype="float32")
+dst = np.array([(640 - round((640 - 50) / 2), 386), (640 - round((640 - 50) / 2), 386 -39), (round((640 - 50) / 2), 386 - 39), (round((640 - 50) / 2), 386)], dtype="float32")
 M = cv2.getPerspectiveTransform(pts, dst)
 warped = cv2.warpPerspective(im, M, (width, height))
 im = cv2.resize(im, None, fx=0.5, fy=0.5, interpolation = cv2.INTER_CUBIC)
 
-warped = cv2.resize(warped, None, fx=0.5, fy=0.5, interpolation = cv2.INTER_CUBIC)
-#cv2.imshow 
+#warped = cv2.resize(warped, None, fx=0.5, fy=0.5, interpolation = cv2.INTER_CUBIC)
+#cv2.imshow
 
-print height, width
+#print height, width
 cv2.imshow("TEST", warped)
 
 

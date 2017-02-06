@@ -1,54 +1,90 @@
-'''import RPi.GPIO as GPIO
-import time
+import cv2
 
-Motor1Pin1   = 11    # pin11
-Motor1Pin2   = 12    # pin12
-Motor1Enable = 13    # pin13
-Motor2Pin1   = 15
-Motor2Pin2   = 16
-Motor2Enable = 18
-GPIO.setmode(GPIO.BOARD)          # Numbers GPIOs by physical locationGPIO.setup(MotorPin1, GPIO.OUT)   # mode --- output
-GPIO.setup(Motor1Pin1, GPIO.OUT)   # mode --- output
-GPIO.setup(Motor1Pin2, GPIO.OUT)
-GPIO.setup(Motor1Enable, GPIO.OUT)
+im = cv2.imread("lasertest3.png", 1)
+#cv2.imshow("TEST", im)
+HUE_MIN = 5
+HUE_MAX = 175
+SAT_MIN = 100
+SAT_MAX = 255
+VAL_MIN = 50
+VAL_MAX = 255
+channels = {
+    'hue': None,
+    'saturation': None,
+    'value': None,
+    'laser': None,
+}
 
-GPIO.setup(Motor2Pin1, GPIO.OUT)   # mode --- output
-GPIO.setup(Motor2Pin2, GPIO.OUT)
-GPIO.setup(Motor2Enable, GPIO.OUT)
 
-GPIO.output(Motor1Pin1, 1)
-GPIO.output(Motor1Pin2, 0)
+def threshold_image(channel):
 
-GPIO.output(Motor2Pin1, 0)
-GPIO.output(Motor2Pin2, 1)
+    if channel == "hue":
+        minimum = HUE_MIN
+        maximum = HUE_MAX
+    elif channel == "saturation":
+        minimum = SAT_MIN
+        maximum = SAT_MAX
+    elif channel == "value":
+        minimum = VAL_MIN
+        maximum = VAL_MAX
 
-GPIO.output(Motor1Enable, 1)
-GPIO.output(Motor2Enable, 1)
+    (t, tmp) = cv2.threshold(
+        channels[channel],  # src
+        maximum,  # threshold value
+        0,  # we dont care because of the selected type
+        cv2.THRESH_TOZERO_INV  # type
+    )
 
-time.sleep(4)
-GPIO.output(Motor1Enable, 0)
-GPIO.output(Motor2Enable, 0)
-'''
-import numpy as np
-import math
-from multiprocessing import Queue
+    (t, channels[channel]) = cv2.threshold(
+        tmp,  # src
+        minimum,  # threshold value
+        255,  # maxvalue
+        cv2.THRESH_BINARY  # type
+    )
 
-v1 = (1, 1)
-v2 = (1, 2)
-dot = v1[0] * v2[0] + v1[1] * v2[1]
-bottom = math.hypot(v1[0], v1[1]) * math.hypot(v2[0], v2[1])
-angle = math.acos(dot / bottom)
-print angle
+    if channel == 'hue':
+        # only works for filtering red color because the range for the hue is split
+        channels['hue'] = cv2.bitwise_not(channels['hue'])
 
-print v2[0] * v1[1] - v2[1] * v1[0]# 2d-cross product tells you whether vector is to the right or left. negative = left, positive = right
-q = Queue()
-print q.qsize()
+def getLocation(frame):
+    hsv_img = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-angle = math.pi
-matrix = np.matrix([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
-v1 = np.matrix(v1).transpose()
-print v1
-l = (matrix*v1).A.T
-print tuple([i for x in l for i in x])
-print matrix
+    # split the video frame into color channels
+    h, s, v = cv2.split(hsv_img)
+    channels['hue'] = h
+    channels['saturation'] = s
+    channels['value'] = v
 
+    # Threshold ranges of HSV components; storing the results in place
+    threshold_image("hue")
+    threshold_image("saturation")
+    threshold_image("value")
+
+    # Perform an AND on HSV components to identify the laser!
+    channels['laser'] = cv2.bitwise_and(channels['hue'], channels['value'])
+
+    channels['laser'] = cv2.bitwise_and(channels['saturation'], channels['laser'])
+
+    # track
+    mask = channels['laser']
+
+    #print "TEST"
+    center = None
+    countours = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
+
+    if len(countours) > 0:
+        # print "found"
+        c = max(countours, key=cv2.contourArea)
+        ((x, y), radius) = cv2.minEnclosingCircle(c)
+        moments = cv2.moments(c)
+        if moments["m00"] > 0:
+            center = int(moments["m10"] / moments["m00"]), int(moments["m01"] / moments["m00"])
+        else:
+            center = int(x), int(y)
+    # print center
+    return center
+center = getLocation(im)
+print center
+cv2.circle(im, (center), 5, (0,255,0), 3)
+cv2.imshow("TEST", im)
+cv2.waitKey(0)
